@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
+	"math"
 	"os"
 	"os/exec"
-	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -15,6 +16,7 @@ type Host struct {
 	Hostname string   `json:"hostname"`
 	IP       string   `json:"ip"` //with CIDR network suffix
 	Groups   []string `json:"groups,omitempty"`
+	Duration float64  `json:"duration,omitempty"` //in days
 }
 
 func main() {
@@ -48,7 +50,7 @@ func main() {
 		inputFile = os.Stdin
 	} else { //read input from file
 		l.Println("Processing network description file: " + *networkFile)
-		inputFile, err := os.Open(*networkFile)
+		inputFile, err = os.Open(*networkFile)
 		if err != nil {
 			l.Fatal("Could not open network description file: " + *networkFile + "\n" + err.Error())
 		}
@@ -62,13 +64,9 @@ func main() {
 		input = input + scanner.Text()
 	}
 
-	//strip out // comments from network description file or input:
-	re := regexp.MustCompile(`([\s]//.*)|(^//.*)`)
-	fileCleanedBytes := re.ReplaceAll([]byte(input), nil)
-
 	var network []Host
 
-	err = json.Unmarshal(fileCleanedBytes, &network) //read the network config
+	err = json.Unmarshal([]byte(input), &network) //read the network config
 	if err != nil {
 		if *networkFile == "-" {
 			*networkFile = "standard input."
@@ -78,7 +76,13 @@ func main() {
 
 	for _, h := range network {
 		groups := strings.Join(h.Groups, ",")
-		cmd := exec.Command(*binaryPath, "sign", "-ca-crt", *caCertFile, "-ca-key", *caKeyFile, "-name", h.Hostname, "-ip", h.IP, "-groups", groups)
+		var cmd *exec.Cmd
+		if h.Duration > 0 {
+			duration := strconv.Itoa(int(math.Round(h.Duration*24))) + "h"
+			cmd = exec.Command(*binaryPath, "sign", "-ca-crt", *caCertFile, "-ca-key", *caKeyFile, "-duration", duration, "-name", h.Hostname, "-ip", h.IP, "-groups", groups)
+		} else {
+			cmd = exec.Command(*binaryPath, "sign", "-ca-crt", *caCertFile, "-ca-key", *caKeyFile, "-name", h.Hostname, "-ip", h.IP, "-groups", groups)
+		}
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			l.Fatal(h.Hostname + " " + string(output) + " Error: " + err.Error())
