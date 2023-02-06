@@ -56,6 +56,9 @@ Example input:
 }
 ```
 
+If you don't want to create the CA files, you can simply omit the ```ca``` object in the JSON.
+The ```duration``` key is specified in days, and is always optional. If omitted for the CA, a default of 1 year is used. The default duration for hosts is until 1 second before the expiration of the CA.
+
 Run ```nebulizer -h``` to see the help:
 
 ```
