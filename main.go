@@ -12,11 +12,21 @@ import (
 	"strings"
 )
 
+type CA struct {
+	Name     string  `json:"name"`
+	Duration float64 `json:"duration,omitempty"` //in days
+}
+
 type Host struct {
 	Hostname string   `json:"hostname"`
 	IP       string   `json:"ip"` //with CIDR network suffix
 	Groups   []string `json:"groups,omitempty"`
 	Duration float64  `json:"duration,omitempty"` //in days
+}
+
+type Network struct {
+	CA    CA     `json:"ca"`
+	Hosts []Host `json:"hosts"`
 }
 
 func main() {
@@ -64,7 +74,7 @@ func main() {
 		input = input + scanner.Text()
 	}
 
-	var network []Host
+	var network Network
 
 	err = json.Unmarshal([]byte(input), &network) //read the network config
 	if err != nil {
@@ -74,9 +84,23 @@ func main() {
 		l.Fatal("Could not parse network description from " + *networkFile + "\nError: " + err.Error())
 	}
 
-	for _, h := range network {
+	var cmd *exec.Cmd
+
+	if len(network.CA.Name) > 0 { //create the CA if name is specified
+		duration := "8760h" //default 1 year
+		if network.CA.Duration > 0 {
+			duration = strconv.Itoa(int(math.Round(network.CA.Duration*24))) + "h" //convert days to hours
+		}
+		cmd := exec.Command(*binaryPath, "ca", "-out-crt", *caCertFile, "-out-key", *caKeyFile, "-name", network.CA.Name, "-duration", duration)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			l.Fatal("CA: " + string(output) + " Error: " + err.Error())
+		}
+		l.Println("Created CA '" + network.CA.Name + "' OK " + string(output))
+	}
+
+	for _, h := range network.Hosts {
 		groups := strings.Join(h.Groups, ",")
-		var cmd *exec.Cmd
 		if h.Duration > 0 {
 			duration := strconv.Itoa(int(math.Round(h.Duration*24))) + "h"
 			cmd = exec.Command(*binaryPath, "sign", "-ca-crt", *caCertFile, "-ca-key", *caKeyFile, "-duration", duration, "-name", h.Hostname, "-ip", h.IP, "-groups", groups)
@@ -85,7 +109,7 @@ func main() {
 		}
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			l.Fatal(h.Hostname + " " + string(output) + " Error: " + err.Error())
+			l.Fatal("Host: " + h.Hostname + " " + string(output) + " Error: " + err.Error())
 		}
 		l.Println(h.Hostname + " OK " + string(output))
 	}
