@@ -58,6 +58,7 @@ Example input:
 
 If you don't want to create the CA files, you can simply omit the ```ca``` object in the JSON.
 The ```duration``` key is specified in days, and is always optional. If omitted for the CA, a default of 1 year is used. The default duration for hosts is until 1 second before the expiration of the CA.
+Nebulizer will skip over creating a host or CA file if the certificate file already exists.
 
 Run ```nebulizer -h``` to see the help:
 
@@ -69,6 +70,7 @@ Usage of ./nebulizer:
     	Path to network input file. Use '-' for standard input. (default "-")
   -k string
     	CA key path. (default "./ca.key")
+  -o Overwrite existing files.
   -p string
     	Path to nebula-cert binary file. If not specified, search $PATH and current directory.
 ```

@@ -38,6 +38,7 @@ func main() {
 	caKeyFile := flag.String("k", "./ca.key", "CA key path.")
 	binaryPath := flag.String("p", "", "Path to nebula-cert binary file. If not specified, search $PATH and current directory.")
 	networkFile := flag.String("f", "-", "Path to network input file. Use '-' for standard input.")
+	overwrite := flag.Bool("o", false, "Overwrite existing files.")
 	flag.Parse()
 
 	//Locate binary
@@ -66,7 +67,6 @@ func main() {
 		}
 		defer inputFile.Close()
 	}
-	//fileBytes, _ := ioutil.ReadAll(inputFile)
 
 	var input string
 	scanner := bufio.NewScanner(inputFile)
@@ -86,20 +86,29 @@ func main() {
 
 	var cmd *exec.Cmd
 
-	if len(network.CA.Name) > 0 { //create the CA if name is specified
-		duration := "8760h" //default 1 year
-		if network.CA.Duration > 0 {
-			duration = strconv.Itoa(int(math.Round(network.CA.Duration*24))) + "h" //convert days to hours
+	//Create CA if name is specified, AND existing cert doesn't already exist OR overwrite is true.
+	if len(network.CA.Name) > 0 {
+		if _, err := os.Stat(*caCertFile); os.IsNotExist(err) || *overwrite {
+			duration := "8760h" //default 1 year
+			if network.CA.Duration > 0 {
+				duration = strconv.Itoa(int(math.Round(network.CA.Duration*24))) + "h" //convert days to hours
+			}
+			cmd := exec.Command(*binaryPath, "ca", "-out-crt", *caCertFile, "-out-key", *caKeyFile, "-name", network.CA.Name, "-duration", duration)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				l.Fatal("CA: " + string(output) + " Error: " + err.Error())
+			}
+			l.Println("Created CA '" + network.CA.Name + "' OK " + string(output))
+		} else {
+			l.Println("CA certificate '" + *caCertFile + "' already exists. Skipping...")
 		}
-		cmd := exec.Command(*binaryPath, "ca", "-out-crt", *caCertFile, "-out-key", *caKeyFile, "-name", network.CA.Name, "-duration", duration)
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			l.Fatal("CA: " + string(output) + " Error: " + err.Error())
-		}
-		l.Println("Created CA '" + network.CA.Name + "' OK " + string(output))
 	}
 
 	for _, h := range network.Hosts {
+		if _, err := os.Stat(h.Hostname + ".crt"); err == nil && !*overwrite { //check if host certificate file exists and overwrite not true
+			l.Println(h.Hostname + " certificate already exists. Skipping...")
+			continue
+		}
 		groups := strings.Join(h.Groups, ",")
 		if h.Duration > 0 {
 			duration := strconv.Itoa(int(math.Round(h.Duration*24))) + "h"
