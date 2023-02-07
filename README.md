@@ -1,6 +1,6 @@
 # Nebulizer
 
-Nebulizer is a console application that takes JSON input and creates a set of certificate files for a Nebula overlay network.
+Nebulizer is a console application that takes JSON input and creates a set of certificate files for a [Nebula](https://github.com/slackhq/nebula) overlay network.
 
 The ```nebula-cert``` binary is used to create the certificate files.
 
