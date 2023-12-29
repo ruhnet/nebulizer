@@ -22,6 +22,7 @@ type Host struct {
 	IP       string   `json:"ip"` //with CIDR network suffix
 	Groups   []string `json:"groups,omitempty"`
 	Duration float64  `json:"duration,omitempty"` //in days
+	Subnets  []string `json:"subnets,omitempty"`
 }
 
 type Network struct {
@@ -110,11 +111,12 @@ func main() {
 			continue
 		}
 		groups := strings.Join(h.Groups, ",")
+		subnets := strings.Join(h.Subnets, ",")
 		if h.Duration > 0 {
 			duration := strconv.Itoa(int(math.Round(h.Duration*24))) + "h"
-			cmd = exec.Command(*binaryPath, "sign", "-ca-crt", *caCertFile, "-ca-key", *caKeyFile, "-duration", duration, "-name", h.Hostname, "-ip", h.IP, "-groups", groups)
+			cmd = exec.Command(*binaryPath, "sign", "-ca-crt", *caCertFile, "-ca-key", *caKeyFile, "-duration", duration, "-name", h.Hostname, "-ip", h.IP, "-groups", groups, "-subnets", subnets)
 		} else {
-			cmd = exec.Command(*binaryPath, "sign", "-ca-crt", *caCertFile, "-ca-key", *caKeyFile, "-name", h.Hostname, "-ip", h.IP, "-groups", groups)
+			cmd = exec.Command(*binaryPath, "sign", "-ca-crt", *caCertFile, "-ca-key", *caKeyFile, "-name", h.Hostname, "-ip", h.IP, "-groups", groups, "-subnets", subnets)
 		}
 		output, err := cmd.CombinedOutput()
 		if err != nil {
