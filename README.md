@@ -26,6 +26,11 @@ Example input:
     {
       "hostname": "server1.nebula.mydomain.com",
       "ip": "172.31.9.2/26",
+      "overwrite": true,
+      "subnets": [
+        "10.105.4.0/24",
+        "192.168.143.64/27"
+      ],
       "groups": [
         "servers",
         "app-backend"
@@ -35,6 +40,7 @@ Example input:
       "hostname": "tmpadmin.nebula.mydomain.com",
       "ip": "172.31.9.8/26",
       "duration": 30,
+      "overwrite": true,
       "groups": [
         "admin",
         "mod",
