@@ -18,11 +18,12 @@ type CA struct {
 }
 
 type Host struct {
-	Hostname string   `json:"hostname"`
-	IP       string   `json:"ip"` //with CIDR network suffix
-	Groups   []string `json:"groups,omitempty"`
-	Duration float64  `json:"duration,omitempty"` //in days
-	Subnets  []string `json:"subnets,omitempty"`
+	Hostname  string   `json:"hostname"`
+	IP        string   `json:"ip"` //with CIDR network suffix
+	Groups    []string `json:"groups,omitempty"`
+	Subnets   []string `json:"subnets,omitempty"`
+	Duration  float64  `json:"duration,omitempty"` //in days
+	Overwrite bool     `json:"overwrite,omitempty"`
 }
 
 type Network struct {
@@ -106,9 +107,13 @@ func main() {
 	}
 
 	for _, h := range network.Hosts {
-		if _, err := os.Stat(h.Hostname + ".crt"); err == nil && !*overwrite { //check if host certificate file exists and overwrite not true
-			l.Println(h.Hostname + " certificate already exists. Skipping...")
-			continue
+		if _, err := os.Stat(h.Hostname + ".crt"); err == nil {
+			if (*overwrite || h.Overwrite) && makeBackup(h.Hostname) {
+				l.Println(h.Hostname + " exists but overwrite is true: renamed as backup.")
+			} else {
+				l.Println(h.Hostname + " certificate already exists. Skipping...")
+				continue
+			}
 		}
 		groups := strings.Join(h.Groups, ",")
 		subnets := strings.Join(h.Subnets, ",")
@@ -124,5 +129,28 @@ func main() {
 		}
 		l.Println(h.Hostname + " OK " + string(output))
 	}
+}
 
+func makeBackup(hostName string) bool {
+	filenames := []string{hostName + ".crt", hostName + ".key"}
+	return makeBackupOfFiles(filenames)
+}
+
+func makeBackupOfFiles(names []string) bool {
+	for _, name := range names {
+		err := renameFile(name)
+		if err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func renameFile(name string) error {
+	err := os.Rename(name, name+".bak")
+	if err != nil {
+		log.Println("Error making backup of '"+name+"': ", err)
+		return err
+	}
+	return nil
 }
